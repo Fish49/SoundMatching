@@ -18,7 +18,7 @@ AudioSegment.converter = 'C:\\ffmpeg\\bin\\ffmpeg.exe'
 
 globalSampleRate = 44100
 tickRate = 10
-defaultPath = 'soundMatching/'
+defaultPath = ''
 
 NoteBlockInstruments = {
     'flute': 3,

@@ -54,7 +54,7 @@ for i, instr in enumerate(NoteBlockInstruments.keys()):
 matchedTarget = target.copy()
 final = np.zeros(len(target))
 
-for iter in range(3000):
+for iter in range(500):
     tickEvaluation = getTicksEvaluation(matchedTarget, maxSampleLength)
     worstTickIndex = getMaxTickIndex(tickEvaluation)
     worstTickRange = getTickRange(maxSampleLength, worstTickIndex)
