@@ -5,6 +5,7 @@ Matching sounds to note blocks Template
 
 import numpy as np
 from scipy.optimize import lsq_linear, minimize
+from scipy.signal import stft
 from librosa.effects import pitch_shift
 from librosa import resample as libresample
 from pydub import AudioSegment
