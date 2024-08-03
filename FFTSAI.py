@@ -4,11 +4,22 @@ Matching sounds to note blocks
 '''
 
 from soundMatchingTemplate import *
+from scipy.io.wavfile import write
+from scipy.signal import istft
 
 def getTickSegs():
     return getTickSamples() // 128
 
-target = stft(file2Numpy(defaultPath + 'input/test.mp3', 'mp3'), globalSampleRate)
+def complexTo3D(data):
+    magnitude = np.abs(data)
+    phase = np.angle(data)
+
+    # Create a 3D array with amplitude and phase
+    return np.stack((magnitude, phase), axis=-1)
+
+target = file2Numpy(defaultPath + 'input/test.mp3', 'mp3')
+_, _, targetFT = stft(target, globalSampleRate)
+targetFT = complexTo3D(np.transpose(targetFT))
 
 maxSampleLength = 0
 for i in NoteBlockInstruments:
@@ -16,17 +27,22 @@ for i in NoteBlockInstruments:
     if curSampleLength > maxSampleLength:
         maxSampleLength = curSampleLength
 
-bases = np.zeros((25*len(NoteBlockInstruments), maxSampleLength))
+maxSegLength = (maxSampleLength // 128) + 2
+
+bases = np.zeros((25*len(NoteBlockInstruments), maxSegLength, 129, 2))
+baseWaves = np.zeros((25*len(NoteBlockInstruments), maxSampleLength))
 
 for i, instr in enumerate(NoteBlockInstruments.keys()):
-    curSample = stft(file2Numpy(getInstrumentPath(instr), 'ogg', maxSampleLength), globalSampleRate)
+    curSample = file2Numpy(getInstrumentPath(instr), 'ogg', maxSampleLength)
 
     for pi, pitch in enumerate(generatePitches(curSample)):
-        bases[(i*25) + pi] = pitch
+        _, _, pitchFT = stft(curSample, globalSampleRate)
+        pitchFT = complexTo3D(np.transpose(pitchFT))
 
-maxSegLength = maxSampleLength // getTickSegs()
+        baseWaves[(i * 25) + pi] = pitch
+        bases[(i*25) + pi] = pitchFT
 
-matchedTarget = target.copy()
+matchedTarget = targetFT.copy()
 final = np.zeros(len(target))
 totalNoteBlocks = 0
 additionsPerPass = []
@@ -41,19 +57,20 @@ while True:
 
         while True:
             # print(currentTickIndex)
-            currentTickStart = (currentTickIndex * getTickSamples())
+            currentTickStart = (currentTickIndex * getTickSegs())
+            currentTickStartSamples = (currentTickIndex * getTickSamples())
 
-            if (currentTickStart + maxSampleLength) >= len(matchedTarget):
+            if (currentTickStart + maxSegLength) >= len(matchedTarget):
                 break
 
-            currentTick = matchedTarget[currentTickStart:(currentTickStart + maxSampleLength)]
+            currentTick = matchedTarget[currentTickStart:(currentTickStart + maxSegLength)]
             fixedBase = findCoefficient(base, currentTick) * base
 
             newTick = currentTick - fixedBase
-            if (np.max(np.abs(newTick)) < np.max(np.abs(currentTick))) and (np.mean(np.abs(newTick)) < np.mean(np.abs(currentTick))):
+            if (np.mean(np.abs(newTick)) < np.mean(np.abs(currentTick))):
                 print(i)
                 globalProgress += 1
-                observeList.append((np.mean(np.abs(currentTick)) / np.mean(np.abs(newTick)), currentTickStart, fixedBase.copy()))
+                observeList.append((np.mean(np.abs(currentTick)) / np.mean(np.abs(newTick)), currentTickStart, currentTickStartSamples, fixedBase.copy(), baseWaves[i].copy()))
 
             currentTickIndex += 1
             # time.sleep(0.01)
@@ -70,16 +87,16 @@ while True:
 
             temp = []
             for match in observeList[1:]:
-                condition1 = (observeList[0][1] <= match[1] <= observeList[0][1] + maxSampleLength)
-                condition2 = (observeList[0][1] <= match[1] + maxSampleLength <= observeList[0][1] + maxSampleLength)
+                condition1 = (observeList[0][1] <= match[1] <= observeList[0][1] + maxSegLength)
+                condition2 = (observeList[0][1] <= match[1] + maxSegLength <= observeList[0][1] + maxSegLength)
                 if not (condition1 or condition2):
                     temp.append(match)
 
             observeList = temp
 
         for add in addList:
-            matchedTarget[add[1]:add[1] + maxSampleLength] -= add[2]
-            final[add[1]:add[1] + maxSampleLength] += add[2]
+            matchedTarget[add[1]:add[1] + maxSegLength] -= add[3]
+            final[add[2]:(add[2] + maxSampleLength)] += add[4]
 
     print('oxoxoaosod', globalProgress)
     if globalProgress == 0:
@@ -90,11 +107,11 @@ while True:
 
 plt.plot(list(range(len(final))), final)
 plt.show()
-plt.plot(list(range(len(matchedTarget))), matchedTarget)
-plt.show()
+# plt.plot(list(range(len(matchedTarget))), matchedTarget)
+# plt.show()
 plt.plot(list(range(len(additionsPerPass))), additionsPerPass)
 plt.show()
-print(f'Total Note Blocks: {totalNoteBlocks}, NoteBlocksPerTick: {totalNoteBlocks / (len(target) // getTickSamples())}')
 output_file_path = defaultPath + "output/finalTestSAI.wav"
 sf.write(output_file_path, final, globalSampleRate)
-sf.write(defaultPath + 'output/whatIsThis.wav', matchedTarget, globalSampleRate)
+# sf.write(defaultPath + 'output/whatIsThis.wav', matchedTarget, globalSampleRate)
+print(f'Total Note Blocks: {totalNoteBlocks}, NoteBlocksPerTick: {totalNoteBlocks / (len(target) // getTickSamples())}')

@@ -14,6 +14,7 @@ import soundfile as sf
 import matplotlib.pyplot as plt
 import time
 import random
+import math
 
 AudioSegment.converter = 'C:\\ffmpeg\\bin\\ffmpeg.exe'
 
@@ -133,6 +134,9 @@ def findCoefficient(A, B):
     # Ensure A and B are numpy arrays
     A = np.array(A)
     B = np.array(B)
+    if len(A.shape) == 3:
+        A = A[:, :, 0].flatten()
+        B = B[:, :, 0].flatten()
 
     # Calculate the dot products
     dot_product_AB = np.dot(A, B)
