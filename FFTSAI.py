@@ -11,13 +11,13 @@ def getTickSegs():
     return getTickSamples() // 128
 
 def complexTo3D(data):
-    magnitude = np.abs(data)
-    phase = np.angle(data)
+    real = np.real(data)
+    imag = np.imag(data)
 
     # Create a 3D array with amplitude and phase
-    return np.stack((magnitude, phase), axis=-1)
+    return np.stack((real, imag), axis=-1)
 
-target = file2Numpy(defaultPath + 'input/test.mp3', 'mp3')
+target = file2Numpy(defaultPath + 'input/test.mp3', 'mp3') / 2
 _, _, targetFT = stft(target, globalSampleRate)
 targetFT = complexTo3D(np.transpose(targetFT))
 
@@ -60,17 +60,17 @@ while True:
             currentTickStart = (currentTickIndex * getTickSegs())
             currentTickStartSamples = (currentTickIndex * getTickSamples())
 
-            if (currentTickStart + maxSegLength) >= len(matchedTarget):
+            if (currentTickStartSamples + maxSampleLength) >= len(final):
                 break
 
             currentTick = matchedTarget[currentTickStart:(currentTickStart + maxSegLength)]
             fixedBase = findCoefficient(base, currentTick) * base
 
             newTick = currentTick - fixedBase
-            if (np.mean(np.abs(newTick)) < np.mean(np.abs(currentTick))):
+            if (np.mean(newTick) < np.mean(currentTick)):
                 print(i)
                 globalProgress += 1
-                observeList.append((np.mean(np.abs(currentTick)) / np.mean(np.abs(newTick)), currentTickStart, currentTickStartSamples, fixedBase.copy(), baseWaves[i].copy()))
+                observeList.append((np.mean(currentTick) / np.mean(newTick), currentTickStart, currentTickStartSamples, fixedBase.copy(), baseWaves[i].copy()))
 
             currentTickIndex += 1
             # time.sleep(0.01)

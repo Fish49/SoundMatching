@@ -135,8 +135,8 @@ def findCoefficient(A, B):
     A = np.array(A)
     B = np.array(B)
     if len(A.shape) == 3:
-        A = A[:, :, 0].flatten()
-        B = B[:, :, 0].flatten()
+        A = A[:, :].flatten()
+        B = B[:, :].flatten()
 
     # Calculate the dot products
     dot_product_AB = np.dot(A, B)
