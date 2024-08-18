@@ -9,41 +9,51 @@ Matching sounds to note blocks
 
 from soundMatchingTemplate import *
 
+def getTickSegs():
+    return getTickSamples() // 128
+
+def extractMags(fft):
+    return np.abs(fft)
+
 target = file2Numpy(defaultPath + 'input/youxyou.mp3', 'mp3')
+_, _, targetFT = stft(target, globalSampleRate)
+targetFT = extractMags(np.transpose(targetFT))
 
 maxSampleLength = 0
 for i in NoteBlockInstruments:
     curSampleLength = len(file2Numpy(getInstrumentPath(i), 'ogg'))
     if curSampleLength > maxSampleLength:
         maxSampleLength = curSampleLength
+maxSegLength = (maxSampleLength // 128) + 2
 
-target = applyFadeOut(target, maxSampleLength)
 bases = np.zeros((25*len(NoteBlockInstruments), maxSampleLength))
+baseFT = np.zeros((25*len(NoteBlockInstruments), maxSegLength * 129))
 
 for i, instr in enumerate(NoteBlockInstruments.keys()):
     curSample = file2Numpy(getInstrumentPath(instr), 'ogg', maxSampleLength)
 
     for pi, pitch in enumerate(generatePitches(curSample)):
-        bases[(i*25) + pi] = pitch
+        _, _, pitchFT = stft(curSample, globalSampleRate)
+        pitchFT = extractMags(np.transpose(pitchFT)).flatten()
 
-matchedTarget = target.copy()
+        bases[(i*25) + pi] = pitch
+        baseFT[(i*25) + pi] = pitchFT
+
+matchedTarget = targetFT.copy()
 final = np.zeros(len(target))
 
 tickIndex = 0
 while True:
     currentTickStart = tickIndex * getTickSamples()
+    currentTickStartSegs = tickIndex * getTickSegs()
     if currentTickStart + maxSampleLength >= len(final):
         break
-    currentTargetTick = matchedTarget[currentTickStart:currentTickStart + maxSampleLength]
+    currentTargetTick: np.ndarray = matchedTarget[currentTickStartSegs:currentTickStartSegs + maxSegLength]
+    currentTargetTick = currentTargetTick.flatten()
 
-    coefs = lsq_linear(bases.transpose(), currentTargetTick, (0, 1)).x
+    coefs = lsq_linear(baseFT.transpose(), currentTargetTick, (0, 1)).x
     for i in range(len(bases)):
-        # print(coefs[i])
-        if coefs[i] < 0.005:
-            # print(i)
-            continue
-        print(i)
-        matchedTarget[currentTickStart:currentTickStart + maxSampleLength] -= bases[i] * coefs[i]
+        matchedTarget[currentTickStartSegs:currentTickStartSegs + maxSegLength] -= (baseFT[i] * coefs[i]).reshape(224, 129)
         final[currentTickStart:currentTickStart + maxSampleLength] += bases[i] * coefs[i]
     print(tickIndex)
     tickIndex += 1
