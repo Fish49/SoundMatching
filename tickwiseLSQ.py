@@ -42,7 +42,7 @@ while True:
         if coefs[i] < 0.005:
             # print(i)
             continue
-        print(i)
+        # print(i)
         matchedTarget[currentTickStart:currentTickStart + maxSampleLength] -= bases[i] * coefs[i]
         final[currentTickStart:currentTickStart + maxSampleLength] += bases[i] * coefs[i]
     print(tickIndex)

@@ -9,15 +9,11 @@ from scipy.signal import stft
 import librosa
 from librosa.effects import pitch_shift
 from librosa import resample as libresample
-from pydub import AudioSegment
-from pydub.playback import play
 import soundfile as sf
 import matplotlib.pyplot as plt
 import time
 import random
 import math
-
-AudioSegment.converter = 'C:\\ffmpeg\\bin\\ffmpeg.exe'
 
 globalSampleRate = 44100
 tickRate = 10
@@ -32,13 +28,13 @@ NoteBlockInstruments = {
     'guitar': 5,
     'dbass': 3,
     'cow_bell': 1,
-    'bell': 3,
-    'pling': 5,
-    'click': 1,
-    'banjo': 3,
-    'xylobone': 1,
-    'bdrum': 1,
-    'sdrum': 1,
+    # 'bell': 3,
+    # 'pling': 5,
+    # 'click': 1,
+    # 'banjo': 3,
+    # 'xylobone': 1,
+    # 'bdrum': 1,
+    # 'sdrum': 1,
 }
 
 ones = [
@@ -69,13 +65,12 @@ def getInstrumentPath(instrument):
     return defaultPath + f'noteBlocks/{instrument}.ogg'
 
 def file2Numpy(file_path, format, length = None):
-    audio = AudioSegment.from_file(file_path, format=format)
-    data = np.array(audio.get_array_of_samples())
-    if audio.channels == 2:
+    data, fr = sf.read(file_path)
+    if len(data.shape) == 2:
         data = data.reshape((-1, 2))
         data = data.mean(axis=1)
 
-    data = resample(data, audio.frame_rate, globalSampleRate)[0]
+    data = resample(data, fr, globalSampleRate)[0]
     data = normalizeAudio(data)
 
     if length != None:
